@@ -1,4 +1,4 @@
-use crate::v8_finder::v8_app::V8Arch;
+use crate::v8_app::{V8Arch, V8AppType};
 use std::path::PathBuf;
 use std::cmp::Ordering;
 use crate::v8_finder::v8_dir::V8Dir;
@@ -7,7 +7,7 @@ use std::{env, io};
 use std::fs::File;
 use std::io::{Read, Error, ErrorKind};
 use exe::{PE, Arch};
-use crate::v8_finder::{SearchPriority, V8Finder, get_v8s_suffix};
+use crate::v8_finder::get_v8s_suffix;
 use regex::Regex;
 use encoding_rs_io::DecodeReaderBytes;
 use lazy_static::lazy_static;
@@ -54,6 +54,22 @@ impl Ord for V8Platform {
 }
 
 impl V8Platform {
+    pub fn get_app_by_type(&self, app_type: V8AppType) -> Option<PathBuf> {
+        let current_os = env::consts::OS;
+        let thick_client_path = match current_os {
+            "windows" => self.path.join("bin").join(app_type.value().to_owned() + ".exe"),
+            "linux" => self.path.join(app_type.value()),
+            "macos" => self.path.join(app_type.value()),
+            _ => PathBuf::new(),
+        };
+
+        if thick_client_path.exists() {
+            Some(thick_client_path)
+        } else {
+            None
+        }
+    }
+
     fn from_version_path(path: PathBuf) -> Option<Self> {
         let str_path = path.to_str().unwrap_or("");
         let v8_version_group_count = 4; // 8 3 13 1234
@@ -133,22 +149,46 @@ fn possible_v8installation_paths() -> Result<Vec<V8Dir>, io::Error> {
     let current_os = env::consts::OS;
     match current_os {
         "windows" => v8_windows_paths(),
-        // "linux" => v8_linux_paths(),
-        // "macos" => Ok(Vec::new()),
+        "linux" => v8_linux_paths(),
+        "macos" => v8_macos_paths(),
         _ => Ok(Vec::new())
     }
 }
 
+fn v8_linux_paths() -> Result<Vec<V8Dir>, io::Error> {
+    let starter_cfg_path = PathBuf::from("~/.1C/1cestart");
+    let mut locations_from_starter = read_locations_from_starter(starter_cfg_path)?;
+    let mut default_v8_paths = read_default_linux_paths()?;
+
+    let mut v8_all_paths = Vec::new();
+    v8_all_paths.append(&mut locations_from_starter);
+    v8_all_paths.append(&mut default_v8_paths);
+
+    Ok(v8_all_paths)
+}
+
+fn v8_macos_paths() -> Result<Vec<V8Dir>, io::Error> {
+    let starter_cfg_path = PathBuf::from("~/.1C/1cestart");
+    let mut locations_from_starter = read_locations_from_starter(starter_cfg_path)?;
+    let mut default_v8_paths = read_default_macos_paths();
+
+    let mut v8_all_paths = Vec::new();
+    v8_all_paths.append(&mut locations_from_starter);
+    v8_all_paths.append(&mut default_v8_paths);
+
+    Ok(v8_all_paths)
+}
+
 fn v8_windows_paths() -> Result<Vec<V8Dir>, io::Error> {
     let all_users_starter = get_starter_path_windows("ALLUSERSPROFILE")?;
-    let mut v8_paths_all_users = read_paths_from_starter(
+    let mut v8_paths_all_users = read_locations_from_starter(
         all_users_starter)?;
 
     let local_user_starter = get_starter_path_windows("APPDATA")?;
-    let mut v8_paths_local_user = read_paths_from_starter(
+    let mut v8_paths_local_user = read_locations_from_starter(
         local_user_starter)?;
 
-    let mut default_v8_paths = read_default_v8_paths()?;
+    let mut default_v8_paths = read_default_windows_paths()?;
 
     let mut v8_all_paths = Vec::new();
     v8_all_paths.append(&mut v8_paths_all_users);
@@ -160,7 +200,22 @@ fn v8_windows_paths() -> Result<Vec<V8Dir>, io::Error> {
     Ok(v8_all_paths)
 }
 
-fn read_default_v8_paths() -> Result<Vec<V8Dir>, io::Error> {
+fn read_default_linux_paths() -> Result<Vec<V8Dir>, io::Error> {
+    let x32_path = PathBuf::from("/opt/1cv8/i386");
+    let x64_path = PathBuf::from("/opt/1cv8/x86_64");
+
+    let mut v8_paths: Vec<V8Dir> = Vec::new();
+    v8_paths.push(V8Dir::from_path(PathBuf::from(x32_path)));
+    v8_paths.push(V8Dir::from_path(PathBuf::from(x64_path)));
+
+    Ok(v8_paths)
+}
+
+fn read_default_macos_paths() -> Vec<V8Dir> {
+    vec![V8Dir::from_path(PathBuf::from("/opt/1cv8"))]
+}
+
+fn read_default_windows_paths() -> Result<Vec<V8Dir>, io::Error> {
     let program_files_x86_var = env::var_os("PROGRAMFILES(x86)");
     let program_files_var = env::var_os("PROGRAMFILES");
     let local_appdata_var = env::var_os("LOCALAPPDATA");
@@ -183,7 +238,6 @@ fn read_default_v8_paths() -> Result<Vec<V8Dir>, io::Error> {
     }
 
     if let Some(local_appdata_path) = local_appdata_var {
-        // TODO 8.2 and 8.1
         v8_paths.push(V8Dir::from_path(
             PathBuf::from(&local_appdata_path).join("Programs").join("1cv8")));
         v8_paths.push(V8Dir::from_path(
@@ -206,7 +260,7 @@ fn get_starter_path_windows(env_var_name: &str) -> Result<PathBuf, io::Error> {
     }
 }
 
-fn read_paths_from_starter(starter_cfg_path: PathBuf) -> Result<Vec<V8Dir>, io::Error> {
+fn read_locations_from_starter(starter_cfg_path: PathBuf) -> Result<Vec<V8Dir>, io::Error> {
     let starter_file = File::open(starter_cfg_path)?;
 
     let mut decoder = DecodeReaderBytes::new(starter_file);

@@ -1,11 +1,12 @@
-use crate::v8_finder::v8_platform::V8Platform;
-use std::{io, env};
+use std::env;
+
 use itertools::Itertools;
-use crate::v8_finder::v8_app::V8Arch;
+
+use crate::v8_app::V8Arch;
+use crate::v8_finder::v8_platform::V8Platform;
 
 mod v8_dir;
 mod v8_platform;
-mod v8_app;
 
 pub enum SearchPriority {
     X32,
@@ -28,7 +29,7 @@ impl V8Finder {
                 }
             }
             // TODO logger
-            Err(err) => panic!(err)
+            Err(err) => panic!("{}", err)
         }
     }
 
@@ -75,6 +76,7 @@ impl V8Finder {
     pub fn get_platform(&self, version: &str, search_priority: SearchPriority) -> Option<&V8Platform> {
         let full_version: Vec<_> = version.split(".").collect_vec();
         return match full_version.len() {
+            // 8.3
             2 => {
                 let generation: u32 = full_version[1].parse().unwrap();
                 let filtered_platforms: Vec<_> = self.get_platforms_by_filter(
@@ -82,6 +84,7 @@ impl V8Finder {
 
                 V8Finder::max_platform_by_search_priority(filtered_platforms, search_priority)
             }
+            // 8.3.3
             3 => {
                 let generation: u32 = full_version[1].parse().unwrap();
                 let version: u32 = full_version[2].parse().unwrap();
@@ -90,6 +93,7 @@ impl V8Finder {
 
                 V8Finder::max_platform_by_search_priority(filtered_platforms, search_priority)
             }
+            //8.3.3.1234
             4 => {
                 let generation: u32 = full_version[1].parse().unwrap();
                 let version: u32 = full_version[2].parse().unwrap();

@@ -1,5 +1,5 @@
-enum V8AppType {
-    Application,
+pub enum V8AppType {
+    ThickClient,
     ThinClient,
     RAC,
     DBGS,
@@ -10,9 +10,9 @@ enum V8AppType {
 }
 
 impl V8AppType {
-    fn value(&self) -> &str {
+    pub fn value(&self) -> &str {
         match *self {
-            V8AppType::Application => "1cv8",
+            V8AppType::ThickClient => "1cv8",
             V8AppType::ThinClient => "1cv8c",
             V8AppType::RAC => "rac",
             V8AppType::DBGS => "dbgs",
@@ -31,7 +31,7 @@ pub enum V8Arch {
 }
 
 impl V8Arch {
-    fn value(&self) -> &str {
+    pub fn value(&self) -> &str {
         match *self {
             V8Arch::X86 => "x86",
             V8Arch::X64 => "x64",

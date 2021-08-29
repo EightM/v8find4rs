@@ -7,3 +7,4 @@ mod tests {
 }
 
 pub mod v8_finder;
+pub mod v8_app;
