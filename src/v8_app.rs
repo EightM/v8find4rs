@@ -4,23 +4,37 @@ use std::io::Read;
 use exe::{PE, Arch};
 use std::env;
 
+/// Перечень возможных приложений 1С. Необходим для поиска пути к данным приложениям при использовании
+/// V8Finder
 pub enum V8AppType {
+    /// Толстый клиент
     ThickClient,
+    /// Тонкий клиент
     ThinClient,
+    /// Клиент удаленного администрирования
     RAC,
+    /// Сервер удаленного администрирования
+    RAS,
+    /// Сервер отладки
     DBGS,
+    /// Сервер приложений
     AppServer,
+    /// Сервер хранилища
     RepositoryServer,
+    /// Автономный сервер
     IBSRV,
+    /// Утилита администрирования
     IBCMD,
 }
 
 impl V8AppType {
+    /// Возвращает текстовое имя соответствующего вида приложения 1С
     pub fn value(&self) -> &str {
         match *self {
             V8AppType::ThickClient => "1cv8",
             V8AppType::ThinClient => "1cv8c",
             V8AppType::RAC => "rac",
+            V8AppType::RAS => "ras",
             V8AppType::DBGS => "dbgs",
             V8AppType::AppServer => "ragent",
             V8AppType::RepositoryServer => "crserver",
@@ -31,19 +45,25 @@ impl V8AppType {
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
+/// Перечень разрядностей платформы 1С
 pub enum V8Arch {
+    /// 32-х разрядная
     X86,
+    /// 64-х разрядная
     X64,
 }
 
 impl V8Arch {
-    pub fn value(&self) -> &str {
-        match *self {
-            V8Arch::X86 => "x86",
-            V8Arch::X64 => "x64",
-        }
-    }
-
+    /// Осуществляет попытку определения разрядности платформы 1С. Логика определения различается в
+    /// зависимости от текущей ОС:
+    /// * Windows - по файлу 1cv8s.exe находящегося в папке bin. Читается его PE
+    /// [сигнатура](https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#machine-types)
+    /// * Linux - по пути платформы. 1С автоматически устанавливает платформу в папки i386 или x86_64, соответственно
+    /// разрядность определяется по наличию одной из подстрок в пути;
+    /// * macOS - всегда 64-х разрядная.
+    ///
+    /// Если по каким-то причинам метод не сможет определить разрядность самостоятельно,
+    /// по умолчанию присваивается разрядность 32
     pub fn from_path(v8_path: &PathBuf) -> V8Arch {
         let current_os = env::consts::OS;
         return match current_os {
