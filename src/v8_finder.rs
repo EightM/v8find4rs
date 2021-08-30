@@ -1,9 +1,8 @@
-use std::env;
-
 use itertools::Itertools;
 
 use crate::v8_app::V8Arch;
 use crate::v8_finder::v8_platform::V8Platform;
+use log::error;
 
 mod v8_dir;
 mod v8_platform;
@@ -28,8 +27,7 @@ impl V8Finder {
                     platforms,
                 }
             }
-            // TODO logger
-            Err(err) => panic!("{}", err)
+            Err(err) => error!("{}", err)
         }
     }
 
@@ -106,13 +104,5 @@ impl V8Finder {
             }
             _ => None
         };
-    }
-}
-
-fn get_v8s_suffix() -> &'static str {
-    let current_os = env::consts::OS;
-    match current_os {
-        "windows" => r"bin\1cv8s.exe",
-        _ => "1cv8s",
     }
 }

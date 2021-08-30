@@ -6,8 +6,6 @@ use itertools::Itertools;
 use std::{env, io};
 use std::fs::File;
 use std::io::{Read, Error, ErrorKind};
-use exe::{PE, Arch};
-use crate::v8_finder::get_v8s_suffix;
 use regex::Regex;
 use encoding_rs_io::DecodeReaderBytes;
 use lazy_static::lazy_static;
@@ -82,8 +80,7 @@ impl V8Platform {
                     generation: split_version[1].parse().unwrap(),
                     version: split_version[2].parse().unwrap(),
                     build: split_version[3].parse().unwrap(),
-                    // TODO multiplatform
-                    arch: read_v8_arch_from_exe(&path.join(get_v8s_suffix())),
+                    arch: V8Arch::from_path(&path),
                     path,
                 };
                 return Some(v8_platform);
@@ -123,26 +120,6 @@ impl V8Platform {
         }
         Ok(all_v8_platforms)
     }
-}
-
-fn read_v8_arch_from_exe(path_to_exe: &PathBuf) -> V8Arch {
-    if path_to_exe.exists() {
-        let exe_file = File::open(path_to_exe);
-        if let Ok(mut exe_file) = exe_file {
-            let mut buf = Vec::new();
-            let _ = exe_file.read_to_end(&mut buf);
-
-            let pe_file = PE::new_disk(buf.as_slice());
-            let v8_arch = pe_file.get_arch();
-            return match v8_arch {
-                Ok(Arch::X64) => V8Arch::X64,
-                Ok(Arch::X86) => V8Arch::X86,
-                Err(_) => V8Arch::X86,
-            };
-        }
-    }
-
-    V8Arch::X86
 }
 
 fn possible_v8installation_paths() -> Result<Vec<V8Dir>, io::Error> {
@@ -201,12 +178,16 @@ fn v8_windows_paths() -> Result<Vec<V8Dir>, io::Error> {
 }
 
 fn read_default_linux_paths() -> Result<Vec<V8Dir>, io::Error> {
-    let x32_path = PathBuf::from("/opt/1cv8/i386");
-    let x64_path = PathBuf::from("/opt/1cv8/x86_64");
+    let x32_old_path = PathBuf::from("/opt/1cv8/i386");
+    let x64_old_path = PathBuf::from("/opt/1cv8/x86_64");
+    let x32_new_path = PathBuf::from("/opt/v8.3/i386");
+    let x64_new_path = PathBuf::from("/opt/v8.3/x86_64");
 
     let mut v8_paths: Vec<V8Dir> = Vec::new();
-    v8_paths.push(V8Dir::from_path(PathBuf::from(x32_path)));
-    v8_paths.push(V8Dir::from_path(PathBuf::from(x64_path)));
+    v8_paths.push(V8Dir::from_path(PathBuf::from(x32_old_path)));
+    v8_paths.push(V8Dir::from_path(PathBuf::from(x64_old_path)));
+    v8_paths.push(V8Dir::from_path(PathBuf::from(x32_new_path)));
+    v8_paths.push(V8Dir::from_path(PathBuf::from(x64_new_path)));
 
     Ok(v8_paths)
 }
