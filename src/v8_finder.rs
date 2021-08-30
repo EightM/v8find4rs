@@ -56,7 +56,7 @@ impl V8Finder {
 
     /// Осуществляет фильтрацию хранящихся в V8Finder найденных платформ в поисках одной максимально новой
     /// версии
-    /// * version - может быть в трех вариантах: "8.3", "8.3.3" и "8.3.1234"
+    /// * version - может быть в трех вариантах: "8.3", "8.3.3" и "8.3.3.1234"
     /// * search_priority - см. [SearchPriority]
     pub fn get_platform(&self, version: &str, search_priority: SearchPriority) -> Option<&V8Platform> {
         let full_version: Vec<_> = version.split(".").collect_vec();
